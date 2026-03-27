@@ -1,6 +1,8 @@
 #pragma once 
 #include <cstdint>
+#include <iostream>
 class RingBuffer{
+    int tt = 0;
 public:
     static constexpr int size = 65536;
     static constexpr int mask = size -1;
@@ -10,7 +12,14 @@ public:
     int writeindex = 0;
     int count = 0;
     bool push(uint8_t* data, int len){
-        if (len>size-count) return false;
+        tt++;
+        if (len>size-count) {
+            if (tt==100){
+                tt = 0;
+                printf("ringBuffer : length : %d, size: %d, count: %d\n",len,size,count);
+            }
+            return false;
+        }
         for (int i = 0;i<len;i++){
             buffer[writeindex] = data[i];
             writeindex = (writeindex +1)&mask;

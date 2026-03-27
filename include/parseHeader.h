@@ -2,5 +2,6 @@
 #include <cstdint>
 #include "../include/ringBuffer.h"
 #include "./ch10Header.h"
-void parsePrimaryHeader(RingBuffer& rb, int index,int counter, int offset,ch10PrimaryHeader & ch10PrimaryHeader );
-void parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHeader & ch10SecondaryHeader );
+bool parsePrimaryHeader(RingBuffer& rb, int index,int counter,ch10PrimaryHeader & ch10PrimaryHeader );
+bool parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHeader & ch10SecondaryHeader );
+bool parseChannelSpecifData(RingBuffer & rb, int index, channelSpecificData & channelSpecificData);

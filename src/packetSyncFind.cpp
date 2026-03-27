@@ -1,5 +1,6 @@
 #include "../include/packetSyncFind.h"
 #include "../include/ringBuffer.h"
+#include <iostream>
 int findSyncPattern2Byte(uint8_t* buffer, int value , uint16_t syncPattern,int& offset){
     for(int i = 0;i<value-3;i++){
         if (buffer[i]==(syncPattern>>8)&0xFF && buffer[i+1]==syncPattern&0xFF){
@@ -73,26 +74,53 @@ int findSyncPattern4Byte(uint8_t* buffer, int value , uint32_t syncPattern,int& 
 int findSyncPattern2ByteRingBuffer(RingBuffer & rb, int value, uint16_t syncPattern, int& offset){
     int n = rb.available();
     if (n<3){
+        printf(" findSyncPattern2ByteRingBuffer : n< 3\n");
         return -1;
     }
     uint8_t high = (syncPattern>>8)&0xFF;
     uint8_t low = syncPattern&0xFF;
     for (int i = 0;i<n-1;i++){
-        if (rb.get(i)==high && rb.get(i+1)==low){
+        if (rb.get(i+1)==high && rb.get(i)==low){
+            offset = 0;
+            printf("yeh we find packet sync : %02X %02X\n",high,low);
+            return i;
+        }
+    }
+    rb.advance(n);
+    // printf(" findSyncPattern2ByteRingBuffer : not found the 0xEB25\n");
+    return -1;
+}
+
+int findSyncPattern3ByteRingBuffer(RingBuffer & rb, int value, uint32_t syncPattern, int& offset){
+    int n = rb.available();
+    if (n<3){
+        return -1;
+    }
+    uint8_t first = (syncPattern>>16)&0xFF;
+    uint8_t second = (syncPattern>>8)&0xFF;
+    uint8_t third = (syncPattern)&0xFF;
+    for (int i = 0;i<n-2;i++){
+        if (rb.get(i)==first && rb.get(i+1)==second && rb.get(i+2)==third){
+            return i;
+        }
+    }
+    return -1;
+}
+
+int findSyncPattern2ByteRingBuffer(RingBuffer & rb, int value, uint32_t syncPattern, int& offset){
+    int n = rb.available();
+    if (n<3){
+        return -1;
+    }
+    uint8_t prev = (syncPattern>>24) & 0xFF;
+    uint8_t first = (syncPattern>>16)&0xFF;
+    uint8_t second = (syncPattern>>8)&0xFF;
+    uint8_t third = (syncPattern)&0xFF;
+    for (int i = 0;i<n-3;i++){
+        if (rb.get(i)==prev && rb.get(i+1)==first && rb.get(i+2)==second && rb.get(i+3)==third){
             offset = 0;
             return i;
         }
-        // for (int shift=1;shift<=7;shift++){
-        //     uint8_t first = ((rb.get(i)<<shift)&0xFF)|((rb.get(i+1)>>(8-shift))&0xFF);
-        //     uint8_t second = ((rb.get(i+1)<<shift)&0xFF) | ((rb.get(i+2)>>(8-shift))&0xFF);
-        //     if (first==high && second == low){
-        //         offset = shift;
-        //         return i;
-        //     }
-        // }
     }
-    // if (rb.get(n-2)==high && rb.get(n-1)==low){
-    //     return n-2;
-    // }
     return -1;
 }

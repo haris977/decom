@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "ringBuffer.h"
+#include "syncVariantGenerator.h"
 uint32_t reverse32(uint32_t x);
 uint32_t reverse24(uint32_t x);
 uint16_t reverse16(uint16_t x);

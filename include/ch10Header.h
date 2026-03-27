@@ -24,3 +24,7 @@ struct ch10SecondaryHeader{
     uint16_t secondayChecksum;
 };
 #pragma pack(pop)
+
+struct channelSpecificData{
+    uint32_t value;
+};

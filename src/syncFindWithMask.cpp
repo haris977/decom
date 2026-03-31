@@ -1,5 +1,8 @@
 #include "../include/syncFindWithMask.h"
 #include "../include/syncVariantGenerator.h"
+#include <iomanip>
+#include <fstream>
+using namespace std;
 uint32_t reverse32(uint32_t x) {
     x = ((x >> 1)  & 0x55555555) | ((x & 0x55555555) << 1);
     x = ((x >> 2)  & 0x33333333) | ((x & 0x33333333) << 2);
@@ -52,47 +55,110 @@ int findMinorSync32_rb(RingBuffer& rb, uint32_t sync){
     return -1;
 }
 
-int findMinorSync32_auto(RingBuffer& rb, uint32_t sync){
-    if (rb.available()<5) return -1;
+// ofstream outputfile("minorframe.csv",ios::trunc);
+// int findMinorSync32_auto(RingBuffer& rb, uint32_t sync){
+//     if (rb.available()<5) return -1;
+//     syncVariants variants = generateVariants32(sync);
+//     // printf("This is synfindwithmask : 1: %08X, 2: %08X, 3: %08X, 4: %08X\n",variants.v[0],variants.v[1],variants.v[2],variants.v[3]);
+//     int locked = -1;
+//     uint64_t temp = ((uint64_t)rb.get(0) << 56) |
+//                     ((uint64_t)rb.get(1) << 48) |
+//                     ((uint64_t)rb.get(2) << 32) |
+//                     ((uint64_t)rb.get(3) << 24) |
+//                     ((uint64_t)rb.get(4) << 16) |
+//                     ((uint64_t)rb.get(5) << 8)  |
+//                     rb.get(6);
+//                     // std::cout << std::hex << std::setfill('0');
+//                     // std::cout << "  : " << std::setw(16) << temp << std::endl;
+//                     // printf("%02X %02X %02X %02X %02X %02X %02X %02X\n",rb.get(0),rb.get(1),rb.get(2),rb.get(3),rb.get(4),rb.get(5),rb.get(6),rb.get(7));
+//         while (rb.available()>=5){
+//         if (locked ==-1){
+//             for (int shift = 0;shift<8;shift++){
+//                 uint32_t candidate = (temp>>(8-shift)) & 0xFFFFFFFF;
+//                 for (int k = 0;k<4;k++){
+//                     if (candidate == variants.v[k]){
+//                         locked = k;
+//                         return shift;
+//                     }
+//                 }
+//                 if (locked !=-1) break;
+//             }
+//         }
+//         else{
+//             uint32_t target = variants.v[locked];
+//             printf("syncFindWithMask else : why we came here :");
+//             while (rb.available() >=5){
+//                 if (((temp >> 8) & 0xFFFFFFFF) == target) return 0;
+//                 if (((temp >> 7) & 0xFFFFFFFF) == target) return 1;
+//                 if (((temp >> 6) & 0xFFFFFFFF) == target) return 2;
+//                 if (((temp >> 5) & 0xFFFFFFFF) == target) return 3;
+//                 if (((temp >> 4) & 0xFFFFFFFF) == target) return 4;
+//                 if (((temp >> 3) & 0xFFFFFFFF) == target) return 5;
+//                 if (((temp >> 2) & 0xFFFFFFFF) == target) return 6;
+//                 if (((temp >> 1) & 0xFFFFFFFF) == target) return 7;
+//                 if (rb.available() >=5 ){
+//                     temp = ((temp<<8)& 0xFFFFFFFFFFULL) | rb.get(4);
+//                 }
+//             }
+//             return -1;
+//         }
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(0)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(1)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(2)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(3)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(4)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(5)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(6)<<" ";
+//         // outputfile<<hex<<setw(2)<<setfill('0')<<(int)rb.get(7)<<" ";
+//         // outputfile<<"\n";
+//         // printf("%02X %02X %02X %02X %02X %02X %02X %02X\n",rb.get(0),rb.get(1),rb.get(2),rb.get(3),rb.get(4),rb.get(5),rb.get(6),rb.get(7));
+
+//         rb.advance(1);
+//     }
+//     // outputfile.close();
+//     return -1;
+// }
+
+int findMinorSync32_auto(RingBuffer& rb, uint32_t sync) {
+    if (rb.available() < 5) return -1;  // 40 bits minimum
+    printf("syncfindwithmask: enter minor frame read index %d\n",rb.readindex);
     syncVariants variants = generateVariants32(sync);
-    int locked = -1;
-    uint64_t temp = ((uint64_t)rb.get(0) << 32) |
+
+    // Load initial 40 bits (5 bytes)
+    uint64_t temp =
+        ((uint64_t)rb.get(0) << 32) |
         ((uint64_t)rb.get(1) << 24) |
         ((uint64_t)rb.get(2) << 16) |
         ((uint64_t)rb.get(3) << 8)  |
-        rb.get(4);
-    while (rb.available()>=5){
-        if (locked ==-1){
-            for (int shift = 0;shift<8;shift++){
-                uint32_t candidate = (temp>>(8-shift)) & 0xFFFFFFFF;
-                for (int k = 0;k<4;k++){
-                    if (candidate == variants.v[k]){
-                        locked = k;
-                        break;
-                    }
-                }
-                if (locked !=-1) break;
-            }
-        }
-        else{
-            uint32_t target = variants.v[locked];
-            while (rb.available() >=5){
-                if (((temp >> 8) & 0xFFFFFFFF) == target) return 0;
-                if (((temp >> 7) & 0xFFFFFFFF) == target) return 1;
-                if (((temp >> 6) & 0xFFFFFFFF) == target) return 2;
-                if (((temp >> 5) & 0xFFFFFFFF) == target) return 3;
-                if (((temp >> 4) & 0xFFFFFFFF) == target) return 4;
-                if (((temp >> 3) & 0xFFFFFFFF) == target) return 5;
-                if (((temp >> 2) & 0xFFFFFFFF) == target) return 6;
-                if (((temp >> 1) & 0xFFFFFFFF) == target) return 7;
-                rb.advance(1);
-                if (rb.available() >=5 ){
-                    temp = ((temp<<8)& 0xFFFFFFFFFFULL) | rb.get(4);
+        ((uint64_t)rb.get(4));
+
+    int bitPos = 0;
+    while (rb.available() >= 5) {
+        // check all 8 bit shifts inside current 5-byte window
+        for (int shift = 0; shift < 8; shift++) {
+            uint32_t candidate = (temp >> (8 - shift)) & 0xFFFFFFFF;
+            for (int k = 0; k < 4; k++) {
+                if (candidate == variants.v[k]) {
+                    printf("syncfindwithmask: candidate: %08X, exit index: %d, bit pos: %d \n",candidate,rb.readindex,bitPos);
+                    //how to get k and bitpos at same time with bit shift yeh : 
+                    return (k<<16)|bitPos;
+                    // rb.advance(bitPos/8);
+                    // return shift;   // exact bit offset
                 }
             }
-            return -1;
         }
+        // slide by 1 byte (8 bits)
+        rb.advance(1);
+        bitPos += 8;
+        if (rb.available() < 5) break;
+        temp =
+            ((uint64_t)rb.get(0) << 32) |
+            ((uint64_t)rb.get(1) << 24) |
+            ((uint64_t)rb.get(2) << 16) |
+            ((uint64_t)rb.get(3) << 8)  |
+            ((uint64_t)rb.get(4));
     }
+
     return -1;
 }
 

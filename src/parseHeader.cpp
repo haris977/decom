@@ -69,7 +69,7 @@ bool parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHea
     return varifySecondaryChecksum==secondaryHeader.secondayChecksum;
 }
 
-bool parsedchannelSpecificData(RingBuffer & rb, int index, channelSpecificData& channelSpecificData){
+bool parseChannelSpecifData(RingBuffer & rb, int index, channelSpecificData& channelSpecificData){
     channelSpecificData.value = ((uint32_t)rb.get(index)<<24)|
                                 ((uint32_t)rb.get(index+1)<<16)|
                                 ((uint32_t)rb.get(index+2)<<8) |

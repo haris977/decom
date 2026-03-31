@@ -8,6 +8,7 @@ uint16_t reverse16(uint16_t x);
 void parseStream(RingBuffer& rb);
 int findMinorSync32_rb(RingBuffer& rb, uint32_t sync);
 int findMinorSync32_auto(RingBuffer& rb, uint32_t sync);
+int findMinorSync24_auto(RingBuffer& rb, uint32_t sync);
 enum class syncPatternType{
     MSB_NORMAL,
     MSB_INVERTED,

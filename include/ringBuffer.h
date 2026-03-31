@@ -6,7 +6,6 @@ class RingBuffer{
 public:
     static constexpr int size = 65536;
     static constexpr int mask = size -1;
-
     uint8_t buffer[size];
     int readindex = 0;
     int writeindex = 0;
@@ -27,14 +26,24 @@ public:
         count += len;
         return true;
     }
+
     inline uint8_t get(int index){
         return buffer[(readindex+index)&mask];
     }
+
+    // inline uint8_t shiftBit(int index, int offset){
+    //     uint8_t left = (get(index)<<offset)&0xFF;
+    //     uint8_t right = (get(index+1)>>(8-offset))&0xFF;
+    //     return left|right;
+    // }
+
     void advance(int n){
         readindex = (readindex+n)&mask;
         count -= n;
     }
+
     int available(){
         return count;
     }
 };
+

@@ -82,7 +82,7 @@ int findSyncPattern2ByteRingBuffer(RingBuffer & rb, int value, uint16_t syncPatt
     for (int i = 0;i<n-1;i++){
         if (rb.get(i+1)==high && rb.get(i)==low){
             offset = 0;
-            printf("yeh we find packet sync : %02X %02X\n",high,low);
+            // printf(" packetsyncfind.cpp: yeh we find packet sync : %02X %02X\n",high,low);
             return i;
         }
     }

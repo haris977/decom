@@ -16,7 +16,27 @@
 #include "include/searching.h"
 #include "include/syncFindWithMask.h"
 #include "include/ch10Header.h"
+#include "include/syncFindWithMask.h"
+#include "include/getShiftedByte.h"
 using namespace std;
+
+void printPrimaryHeader(const ch10PrimaryHeader &h) {
+    cout << hex << setfill('0');
+
+    cout << "packetSyncWord : " << setw(4) << h.packetSyncWord << endl;
+    cout << "channelId      : " << setw(4) << h.channelId << endl;
+    cout << "packetLength   : " << setw(8) << h.packetLength << endl;
+    cout << "dataLength     : " << setw(8) << h.dataLength << endl;
+    cout << "dataVersion    : " << setw(2) << (int)h.dataVersion << endl;
+    cout << "sequenceNumber : " << setw(2) << (int)h.sequenceNumber << endl;
+    cout << "packetFlag     : " << setw(2) << (int)h.packetFlag << endl;
+    cout << "dataType       : " << setw(2) << (int)h.dataType << endl;
+    cout << "RTCTime        : " << setw(16) << h.RTCTime << endl;
+    cout << "headerChecksum : " << setw(4) << h.headerChecksum << endl;
+
+    cout << dec;
+}
+
 int main(){
 #ifdef _WIN32
     WSADATA wsa;
@@ -84,11 +104,32 @@ int main(){
         }
         bool parsedHeader = false;
         int counter = 0;
-
-        size_t syncIndex = searchingPacketSyncPattern(rb,syncOffset,parsedHeader,primaryHeader,secondaryHeader);
+        // cout<<rb.writeindex<<endl;
+        size_t syncIndex = searchingPacketSyncPattern(rb,syncOffset,parsedHeader,primaryHeader,secondaryHeader,channelSpecificData);
         if (syncIndex>=0){
-            if (channelSpecificData.value>>19 & 1){
+            // printf("main_udp throughput check : %08X\n",channelSpecificData.value);
+            // printPrimaryHeader(primaryHeader);
+            // cout<<rb.writeindex<<endl;
+            //20th bit is positive then we need to shift 12 bits to get 
+            if (channelSpecificData.value & 0x00001000){
+                // cout<<"main_udp: we are inside of syncIndex>0 "<<endl;
                 //throughput mode.
+                int pos = findMinorSync32_auto(rb,0xFE6B2840)%8;
+                uint16_t bitPos = pos&0xFFFF;
+                uint8_t method = (pos<<16)&0xFF;
+                // cout<<"main_udp: readindex: "<<rb.readindex<<endl;
+                // for (int i = 0;i<20;i++){
+                //     printf("%02X",getShiftedByteRingBuffer(rb,i,off));
+                // }
+                // cout<<"main_udp: if of minorframesync: "<<endl;
+                // printf("%d\n",off);
+                // for (int i= 0;i<20;i++){
+                //     printf("%02X ",getShiftedByteRingBuffer(rb,i,off));
+                // }
+
+                // printf("\n");
+                rb.advance(255);
+                continue;
             }
             else{
                 uint32_t offset = channelSpecificData.value&(0x3FF);
@@ -98,8 +139,15 @@ int main(){
                 }
                 else{
                     //bitshift
+                    uint8_t off = findMinorSync24_auto(rb,0xFAF320);
+                    for (int i = 0;i<20;i++){
+                        printf("02X",getShiftedByteRingBuffer(rb,i,off));
+                    }
+                    rb.advance(255);
                 }
+                continue;
             }
+            rb.advance(255);
         }
         
         // if (status == 0) {

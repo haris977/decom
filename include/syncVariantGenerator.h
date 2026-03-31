@@ -42,6 +42,17 @@ inline uint16_t reverseBits16(uint16_t x){
     x = ((x >> 2) & 0x3333) | ((x & 0x3333) << 2);
     x = ((x >> 4) & 0x0F0F) | ((x & 0x0F0F) << 4);
     x = (x >> 8) | (x << 8);
+    return x&0xFFFF;
+#endif
+}
+
+inline uint8_t reverseBits8(uint8_t x) {
+#if defined(__has_builtin) && __has_builtin(__builtin_bitreverse8)
+    return __builtin_bitreverse8(x);
+#else
+    x = ((x >> 1) & 0x55) | ((x & 0x55) << 1); // swap adjacent bits
+    x = ((x >> 2) & 0x33) | ((x & 0x33) << 2); // swap pairs
+    x = ((x >> 4) & 0x0F) | ((x & 0x0F) << 4); // swap nibbles
     return x;
 #endif
 }

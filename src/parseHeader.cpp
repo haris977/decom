@@ -1,12 +1,14 @@
 #include "../include/ch10Header.h"
 #include "../include/parseHeader.h"
 #include "../include/getShiftedByte.h"
+#include "../include/debugHeader.h"
 uint16_t varifyPrimaryChecksum = 0;
 uint16_t varifySecondaryChecksum = 0;
 bool parsePrimaryHeader(RingBuffer& rb, int index,int counter, ch10PrimaryHeader& primaryHeader){
     // auto getByte = [&](int i){
     //     return getShiftedByteRingBuffer(rb,i+index,offset);
     // };
+    varifyPrimaryChecksum = 0; // Reset checksum for new packet
     primaryHeader.packetSyncWord = ((uint16_t)rb.get(0)<<8)|rb.get(1);
     varifyPrimaryChecksum = (varifyPrimaryChecksum + primaryHeader.packetSyncWord)&0xFF;
     primaryHeader.channelId = ((uint32_t)rb.get(2)<<8)|rb.get(3);
@@ -34,17 +36,21 @@ bool parsePrimaryHeader(RingBuffer& rb, int index,int counter, ch10PrimaryHeader
     varifyPrimaryChecksum = (varifyPrimaryChecksum + (uint16_t)primaryHeader.packetFlag)&0xFF;
     varifyPrimaryChecksum = (varifyPrimaryChecksum + (uint16_t)primaryHeader.dataType)&0xFF;
     primaryHeader.RTCTime =
-        ((uint64_t)rb.get(16) << 56) |
-        ((uint64_t)rb.get(17) << 48) |
-        ((uint64_t)rb.get(18) << 40) |
-        ((uint64_t)rb.get(19) << 32) |
-        ((uint64_t)rb.get(20) << 24) |
-        ((uint64_t)rb.get(21) << 16) |
-        ((uint64_t)rb.get(22) << 8) |
-        rb.get(23);
-    varifyPrimaryChecksum = (varifyPrimaryChecksum + (primaryHeader.RTCTime>>56)&0xFF + (primaryHeader.RTCTime>>48)&0xFF + (primaryHeader.RTCTime>>40)&0xFF  + (primaryHeader.RTCTime>>32)&0xFF + (primaryHeader.RTCTime>>24)&0xFF + (primaryHeader.RTCTime>>16)&0xFF + (primaryHeader.RTCTime>>8)&0xFF+ (primaryHeader.RTCTime)&0xFF)&0xFF;
-    primaryHeader.headerChecksum = (rb.get(24) << 8) | rb.get(25);
+        ((uint64_t)rb.get(16) << 40) |
+        ((uint64_t)rb.get(17) << 32) |
+        ((uint64_t)rb.get(18) << 24) |
+        ((uint64_t)rb.get(19) << 16) |
+        ((uint64_t)rb.get(20) << 8) |
+        ((uint64_t)rb.get(21) );
+    primaryHeader.headerChecksum = (rb.get(22) << 8) | rb.get(23);
+    varifyPrimaryChecksum = (varifyPrimaryChecksum + (primaryHeader.RTCTime>>56)&0xFF + (primaryHeader.RTCTime>>48)&0xFF);
+    
+    varifyPrimaryChecksum = (varifyPrimaryChecksum + (primaryHeader.RTCTime>>40)&0xFF  + (primaryHeader.RTCTime>>32)&0xFF);
+    varifyPrimaryChecksum = (varifyPrimaryChecksum +  (primaryHeader.RTCTime>>24)&0xFF + (primaryHeader.RTCTime>>16)&0xFF);
+    varifyPrimaryChecksum = (varifyPrimaryChecksum + (primaryHeader.RTCTime>>8)&0xFF+ (primaryHeader.RTCTime)&0xFF);
     counter += 24;
+    printf("parsed Header: sync of primaryheader: %04X , calulated checksum : %04X , given checksum: %04X\n",primaryHeader.packetSyncWord,primaryHeader.headerChecksum,varifyPrimaryChecksum);
+    printPrimaryHeader(primaryHeader);
     return varifyPrimaryChecksum==primaryHeader.headerChecksum;
 }
 
@@ -52,6 +58,7 @@ bool parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHea
     auto getByte = [&](int i){
         return rb.get(index+i);
     };
+    varifySecondaryChecksum = 0; // Reset checksum for new packet
     secondaryHeader.time = ((uint64_t)rb.get(16) << 56) |
         ((uint64_t)rb.get(0) << 56) |
         ((uint64_t)rb.get(1) << 48) |

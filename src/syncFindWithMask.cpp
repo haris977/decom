@@ -121,7 +121,7 @@ int findMinorSync32_rb(RingBuffer& rb, uint32_t sync){
 
 int findMinorSync32_auto(RingBuffer& rb, uint32_t sync) {
     if (rb.available() < 5) return -1;  // 40 bits minimum
-    printf("syncfindwithmask: enter minor frame read index %d\n",rb.readindex);
+    // printf("syncfindwithmask: enter minor frame read index %d\n",rb.readindex);
     syncVariants variants = generateVariants32(sync);
 
     // Load initial 40 bits (5 bytes)
@@ -131,15 +131,17 @@ int findMinorSync32_auto(RingBuffer& rb, uint32_t sync) {
         ((uint64_t)rb.get(2) << 16) |
         ((uint64_t)rb.get(3) << 8)  |
         ((uint64_t)rb.get(4));
-
-    int bitPos = 0;
-    while (rb.available() >= 5) {
-        // check all 8 bit shifts inside current 5-byte window
-        for (int shift = 0; shift < 8; shift++) {
-            uint32_t candidate = (temp >> (8 - shift)) & 0xFFFFFFFF;
+        // printf("temp: %016X : \n",temp);
+        
+        int bitPos = 0;
+        while (rb.available() >= 5) {
+            // check all 8 bit shifts inside current 5-byte window
+            for (int shift = 7; shift >=0; shift--) {
+                uint32_t candidate = (temp >> (7 - shift)) & 0xFFFFFFFF;
+                // printf("after minor frame cadidate : %8X ",candidate);
             for (int k = 0; k < 4; k++) {
                 if (candidate == variants.v[k]) {
-                    printf("syncfindwithmask: candidate: %08X, exit index: %d, bit pos: %d \n",candidate,rb.readindex,bitPos);
+                    // printf("syncfindwithmask: candidate: %08X, exit index: %d, bit pos: %d \n",candidate,rb.readindex,bitPos);
                     //how to get k and bitpos at same time with bit shift yeh : 
                     return (k<<16)|bitPos;
                     // rb.advance(bitPos/8);
@@ -149,6 +151,7 @@ int findMinorSync32_auto(RingBuffer& rb, uint32_t sync) {
         }
         // slide by 1 byte (8 bits)
         rb.advance(1);
+        // cout<<"why you are here :"<<endl;
         bitPos += 8;
         if (rb.available() < 5) break;
         temp =

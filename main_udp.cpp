@@ -20,23 +20,6 @@
 #include "include/getShiftedByte.h"
 using namespace std;
 
-void printPrimaryHeader(const ch10PrimaryHeader &h) {
-    cout << hex << setfill('0');
-
-    cout << "packetSyncWord : " << setw(4) << h.packetSyncWord << endl;
-    cout << "channelId      : " << setw(4) << h.channelId << endl;
-    cout << "packetLength   : " << setw(8) << h.packetLength << endl;
-    cout << "dataLength     : " << setw(8) << h.dataLength << endl;
-    cout << "dataVersion    : " << setw(2) << (int)h.dataVersion << endl;
-    cout << "sequenceNumber : " << setw(2) << (int)h.sequenceNumber << endl;
-    cout << "packetFlag     : " << setw(2) << (int)h.packetFlag << endl;
-    cout << "dataType       : " << setw(2) << (int)h.dataType << endl;
-    cout << "RTCTime        : " << setw(16) << h.RTCTime << endl;
-    cout << "headerChecksum : " << setw(4) << h.headerChecksum << endl;
-
-    cout << dec;
-}
-
 int main(){
 #ifdef _WIN32
     WSADATA wsa;
@@ -54,6 +37,7 @@ int main(){
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9000);
+    // addr.sin_port = htons(60001);
     addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(sockfd, (sockaddr *)&addr, sizeof(addr)) < 0) {
         cerr << "bind() failed on UDP port 9000" << endl;
@@ -65,11 +49,6 @@ int main(){
 #else
     socklen_t len = sizeof(sender);
 #endif
-    // std::ofstream outfile("udp_receiver.csv", std::ios::trunc);
-    // if (!outfile) {
-    //     cerr << "Failed to open udp_receiver.csv" << endl;
-    //     return 1;
-    // }
     RingBuffer rb;
     ch10PrimaryHeader primaryHeader{};
     ch10SecondaryHeader secondaryHeader{};
@@ -103,35 +82,43 @@ int main(){
             continue;
         }
         bool parsedHeader = false;
-        int counter = 0;
-        // cout<<rb.writeindex<<endl;
-        size_t syncIndex = searchingPacketSyncPattern(rb,syncOffset,parsedHeader,primaryHeader,secondaryHeader,channelSpecificData);
+        int headerSize = rb.readindex;
+        int syncIndex = searchingPacketSyncPattern(rb,syncOffset,parsedHeader,primaryHeader,secondaryHeader,channelSpecificData);
+       
+        if (syncIndex==123456789){
+            cout<<"main_udp: we should not be here : "<<endl;
+            break;
+        }
         if (syncIndex>=0){
-            // printf("main_udp throughput check : %08X\n",channelSpecificData.value);
-            // printPrimaryHeader(primaryHeader);
-            // cout<<rb.writeindex<<endl;
-            //20th bit is positive then we need to shift 12 bits to get 
+            int whole = 0;
+            int prev = rb.writeindex;
+            printf("channel: %08X\n",channelSpecificData.value);
             if (channelSpecificData.value & 0x00001000){
-                // cout<<"main_udp: we are inside of syncIndex>0 "<<endl;
-                //throughput mode.
-                int pos = findMinorSync32_auto(rb,0xFE6B2840)%8;
-                uint16_t bitPos = pos&0xFFFF;
-                uint8_t method = (pos<<16)&0xFF;
-                // cout<<"main_udp: readindex: "<<rb.readindex<<endl;
-                // for (int i = 0;i<20;i++){
-                //     printf("%02X",getShiftedByteRingBuffer(rb,i,off));
-                // }
-                // cout<<"main_udp: if of minorframesync: "<<endl;
-                // printf("%d\n",off);
-                // for (int i= 0;i<20;i++){
-                //     printf("%02X ",getShiftedByteRingBuffer(rb,i,off));
-                // }
-
-                // printf("\n");
-                rb.advance(255);
+                int pos = findMinorSync32_auto(rb,0xFE6B2840);
+                int bitPos = pos&0xFFFF;
+                int method = (pos<<16)&0xFF;
+                int counter = bitPos/8+headerSize;
+                while (counter<(int)primaryHeader.dataLength){
+                    if (counter+255<(int)primaryHeader.dataLength){
+                        rb.advance(257);
+                        counter += 257;
+                        
+                    }
+                    else{
+                        rb.advance((int)primaryHeader.packetLength-counter);
+                        counter += (int)primaryHeader.dataLength-counter;
+                        break;
+                    }
+                    pos = findMinorSync32_auto(rb,0xFE6B2840);
+                    if (pos==-1){
+                        break;
+                    }
+                }
+               
                 continue;
             }
             else{
+                cout<<"outside of throughput mode : "<<endl;
                 uint32_t offset = channelSpecificData.value&(0x3FF);
                 if(channel[primaryHeader.channelId]){
                     //non bit shift
@@ -147,37 +134,7 @@ int main(){
                 }
                 continue;
             }
-            rb.advance(255);
         }
-        
-        // if (status == 0) {
-        //     syncIndex = searchingPacketSyncPattern(rb, syncOffset, parsedHeader, primaryHeader, secondaryHeader);
-        //     cout<<"main udp this is syncIndex : "<<syncIndex<<endl;
-        //     uint16_t pattern = ((uint16_t)rb.get(syncIndex+3200)<<8) | rb.get(syncIndex+3201);
-        //     if (pattern == primaryHeader.packetSyncWord)
-        //         status = 1;
-        // }
-        // if (status==1 || status==2) {
-        //     uint16_t pattern = ((uint16_t)rb.get(syncIndex+3200)<<8) | rb.get(syncIndex+3201);  //what is this pattern ? print and see if possible?
-        //     printf("this is next packet header: %04X\n",pattern);
-        //     if (status == 2) {
-        //         if (pattern != primaryHeader.packetSyncWord)
-        //             status = 0;
-        //         else {
-        //             bool secondaryHeaderPresent = (rb.get(syncIndex+14)&1);
-        //             int packetLength = primaryHeader.packetLength;
-        //             rb.advance(packetLength);  // Remove processed packet from buffer
-        //             uint8_t minorOffset = findMinorSync32_auto(rb,0xFE6B2840);
-        //         }
-        //     }
-        //     if (status == 1) {
-        //         if (pattern == primaryHeader.packetSyncWord)
-        //             status = 2;
-        //         else
-        //             status = 0;
-        //     }
-
-        // }
 
     }
     // outfile.close();

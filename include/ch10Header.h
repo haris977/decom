@@ -11,7 +11,7 @@ public:
     uint8_t sequenceNumber;
     uint8_t packetFlag;
     uint8_t dataType;
-    uint64_t RTCTime;
+    uint64_t RTCTime = 0;
     uint16_t headerChecksum;
 };
 #pragma pack(pop)

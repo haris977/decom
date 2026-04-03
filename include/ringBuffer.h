@@ -5,7 +5,7 @@ class RingBuffer{
     int tt = 0;
 public:
     static constexpr int size = 65536;
-    static constexpr int mask = size -1;
+    static constexpr int mask = size - 1;
     uint8_t buffer[size];
     int readindex = 0;
     int writeindex = 0;

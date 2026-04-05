@@ -73,7 +73,7 @@ int findSyncPattern4Byte(uint8_t* buffer, int value , uint32_t syncPattern,int& 
 /********---------------------packet sync find with ring buffer------------------------*********/
 int findSyncPattern2ByteRingBuffer(RingBuffer & rb, int value, uint16_t syncPattern, int& offset){
     int n = rb.available();
-    if (n<3){
+    if (n<2){
         printf(" findSyncPattern2ByteRingBuffer : n< 3\n");
         return -1;
     }

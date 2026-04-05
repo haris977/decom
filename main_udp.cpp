@@ -84,11 +84,6 @@ int main(){
         bool parsedHeader = false;
         int headerSize = rb.readindex;
         int syncIndex = searchingPacketSyncPattern(rb,syncOffset,parsedHeader,primaryHeader,secondaryHeader,channelSpecificData);
-       
-        if (syncIndex==123456789){
-            cout<<"main_udp: we should not be here : "<<endl;
-            break;
-        }
         if (syncIndex>=0){
             int whole = 0;
             int prev = rb.writeindex;
@@ -102,7 +97,6 @@ int main(){
                     if (counter+255<(int)primaryHeader.dataLength){
                         rb.advance(257);
                         counter += 257;
-                        
                     }
                     else{
                         rb.advance((int)primaryHeader.packetLength-counter);
@@ -114,7 +108,6 @@ int main(){
                         break;
                     }
                 }
-               
                 continue;
             }
             else{

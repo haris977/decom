@@ -10,7 +10,7 @@ bool parsePrimaryHeader(RingBuffer& rb, int index,int counter, ch10PrimaryHeader
     // };
     varifyPrimaryChecksum = 0; // Reset checksum for new packet
     varifyPrimaryChecksum = checksumPrimaryHeader(rb);
-    int start = rb.readindex;
+    int start = rb.readindex.load();
     int end = (start+24)& rb.mask;
     
     primaryHeader.packetSyncWord = ((uint16_t)rb.get(0)<<8)&0xFFFF|(uint16_t)rb.get(1)&0xFFFF;
@@ -40,8 +40,8 @@ bool parsePrimaryHeader(RingBuffer& rb, int index,int counter, ch10PrimaryHeader
         ((uint64_t)rb.get(21) );
     primaryHeader.headerChecksum = (rb.get(22) << 8) | rb.get(23);
     counter += 24;
-    printf("parsed Header: sync of primaryheader : %04X , given checksum : %04X , calulated checksum : %04X\n",primaryHeader.packetSyncWord,primaryHeader.headerChecksum,varifyPrimaryChecksum);
-    printPrimaryHeader(primaryHeader);
+    // printf("parsed Header: sync of primaryheader : %04X , given checksum : %04X , calulated checksum : %04X\n",primaryHeader.packetSyncWord,primaryHeader.headerChecksum,varifyPrimaryChecksum);
+    // printPrimaryHeader(primaryHeader);
     return varifyPrimaryChecksum==primaryHeader.headerChecksum;
 }
 
@@ -51,18 +51,24 @@ bool parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHea
     };
     varifySecondaryChecksum = 0; // Reset checksum for new packet
     varifySecondaryChecksum = checksumSecondaryHeader(rb);
-    secondaryHeader.time = ((uint64_t)rb.get(16) << 56) |
-        ((uint64_t)rb.get(0) << 56) |
-        ((uint64_t)rb.get(1) << 48) |
-        ((uint64_t)rb.get(2) << 40) |
-        ((uint64_t)rb.get(3) << 32) |
-        ((uint64_t)rb.get(4) << 24) |
-        ((uint64_t)rb.get(5) << 16) |
-        ((uint64_t)rb.get(6) << 8 ) |
-        ((uint64_t)rb.get(7));
-    secondaryHeader.reserved = (((uint16_t)rb.get(8)<<8))|rb.get(9);
-    secondaryHeader.secondayChecksum = (((uint16_t)rb.get(10)<<8))|rb.get(11);
+    // printf("parseheader: secondary: \n",rb.readindex);
+    secondaryHeader.time = ((uint64_t)rb.get(index+0+24) << 56) |
+        ((uint64_t)rb.get(index+1+24) << 48) |
+        ((uint64_t)rb.get(index+2+24) << 40) |
+        ((uint64_t)rb.get(index+3+24) << 32) |
+        ((uint64_t)rb.get(index+4+24) << 24) |
+        ((uint64_t)rb.get(index+5+24) << 16) |
+        ((uint64_t)rb.get(index+6+24) << 8 ) |
+        ((uint64_t)rb.get(index+7+24));
+    // printf("%02X %02X %02X %02X %02X %02X %02X %02X : \n",rb.get(index+0+24),rb.get(index+1+24),rb.get(index+2+24),rb.get(index+3+24),rb.get(index+4+24),rb.get(index+5+24),rb.get(index+6+24),rb.get(index+7+24));    
+    // for (int i = 0;i<40;i++){
+    //     printf("%02X ",rb.get(index+i));
+    // }
+    // printf("\n");
+    secondaryHeader.reserved = (((uint16_t)rb.get(index+8+24)<<8))|rb.get(index+24+9);
+    secondaryHeader.secondayChecksum = (((uint16_t)rb.get(index+24+10)<<8))|rb.get(index+24+11);
     counter += 12;
+    // printf("parseHeader secondary: calulated : %04X ,given : %04X : \n",varifySecondaryChecksum,secondaryHeader.secondayChecksum);
     return varifySecondaryChecksum==secondaryHeader.secondayChecksum;
 }
 

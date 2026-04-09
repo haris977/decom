@@ -1,7 +1,8 @@
 #include <iostream>
 #include "../include/searching.h"
-int searchingPacketSyncPattern(RingBuffer& rb, int syncOffset,bool parsedPrimaryHeader,ch10PrimaryHeader& primaryHeader,ch10SecondaryHeader& secondaryHeader,channelSpecificData& channel){
+int searchingPacketSyncPattern(RingBuffer& rb,ch10PrimaryHeader& primaryHeader,ch10SecondaryHeader& secondaryHeader,channelSpecificData& channel){
     int counter = 0;
+    int syncOffset = 0;
     int syncIndex = findSyncPattern2ByteRingBuffer(rb,3200,0x25EB,syncOffset);
     
     if (syncIndex==-1){
@@ -9,25 +10,34 @@ int searchingPacketSyncPattern(RingBuffer& rb, int syncOffset,bool parsedPrimary
         rb.advance(rb.available()-2);
         return -1;
     }
-    parsedPrimaryHeader = parsePrimaryHeader(rb,syncIndex,counter,primaryHeader);
+    bool parsedPrimaryHeader = parsePrimaryHeader(rb,syncIndex,counter,primaryHeader);
     if (!parsedPrimaryHeader){
         rb.advance(syncIndex+1);
         return -1;
     }    
+    // rb.advance(24);
     bool parsedSeondaryHeader = false;
     
-    if (primaryHeader.packetFlag&1){
-        parsedSeondaryHeader = parseSecondaryHeader(rb,syncIndex+24,counter,secondaryHeader);
+    if ((primaryHeader.packetFlag)==(0x82)){
+        std::cout<<"are we in seoncondaryHeader if: "<<std::endl;
+        parsedSeondaryHeader = parseSecondaryHeader(rb,0,counter,secondaryHeader);
     }
     if (parsedSeondaryHeader){
         parseChannelSpecifData(rb,syncIndex+36,channel);
-        printf("searching: inside of if: %08X",channel.value);
-        rb.advance(36);
+        rb.advance(40);
+        printf("searching: inside of if: %d \n",rb.readindex.load());
     }
     else{
         parseChannelSpecifData(rb,syncIndex+24,channel);
-        printf("searching: inside of else: %08X",channel.value);
         rb.advance(28);
+        printf("searching: else: %d \n",rb.readindex.load());
     }
+    if(parsedPrimaryHeader){
+        syncIndex |= (syncIndex>>16)|0x010000 ;
+    }
+    if(parsedSeondaryHeader){
+        syncIndex |= (syncIndex>>17)|0x020000;
+    }
+    
     return syncIndex;
 }

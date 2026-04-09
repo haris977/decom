@@ -1,0 +1,3 @@
+C:/Haris/C++/DataGenerator/DECOM/build/CMakeFiles/DECOM_UDP_TEST.dir
+C:/Haris/C++/DataGenerator/DECOM/build/CMakeFiles/edit_cache.dir
+C:/Haris/C++/DataGenerator/DECOM/build/CMakeFiles/rebuild_cache.dir

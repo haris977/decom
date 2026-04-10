@@ -73,6 +73,7 @@ bool parseSecondaryHeader(RingBuffer& rb, int index,int counter,ch10SecondaryHea
 }
 
 bool parseChannelSpecifData(RingBuffer & rb, int index, channelSpecificData& channelSpecificData){
+    // printf("parseHeader : checksum : %02X %02X %02X %02X ",rb.get(index),rb.get(index+1),rb.get(index+2),rb.get(index+3));
     channelSpecificData.value = ((uint32_t)rb.get(index)<<24)|
                                 ((uint32_t)rb.get(index+1)<<16)|
                                 ((uint32_t)rb.get(index+2)<<8) |

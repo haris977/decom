@@ -19,8 +19,9 @@ int searchingPacketSyncPattern(RingBuffer& rb,ch10PrimaryHeader& primaryHeader,c
     bool parsedSeondaryHeader = false;
     
     if ((primaryHeader.packetFlag)==(0x82)){
-        std::cout<<"are we in seoncondaryHeader if: "<<std::endl;
-        parsedSeondaryHeader = parseSecondaryHeader(rb,0,counter,secondaryHeader);
+        parsedSeondaryHeader = true;
+        parseSecondaryHeader(rb,0,counter,secondaryHeader);
+        std::cout<<"are we in seoncondaryHeader if: "<<parsedSeondaryHeader<<std::endl;
     }
     if (parsedSeondaryHeader){
         parseChannelSpecifData(rb,syncIndex+36,channel);

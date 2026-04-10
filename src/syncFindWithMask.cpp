@@ -145,10 +145,12 @@ int findMinorSync32_auto(RingBuffer &rb, uint32_t sync, int & counter, ch10Prima
     syncVariants variants = generateVariants32(sync);
     // Load initial 40 bits (5 bytes)
     uint64_t temp;
-    if(rb.readindex.load()%3200+5>(int)primary.packetLength-5){
-        int cnt = (int)primary.packetLength-(rb.readindex.load()%3200)-5;
+    int posInPacket = rb.readindex.load() % 3200;  // Position within packet
+    
+    if (posInPacket+5>(int)primary.packetLength-5){
+        int cnt = (int)primary.packetLength - posInPacket - 5;
         temp = packetMissMatchSync32(rb,cnt);
-        printf("mask: if: before: %16llX %d %d %d %d \n", temp,cnt,counter,primary.dataLength,rb.readindex.load());
+        printf("mask: if: before: %16llX %d %d %d %d \n", temp,cnt,posInPacket,primary.dataLength,rb.readindex.load());
         rb.advance(cnt+5);
         int previous = rb.readindex.load();
         int indexer = searchingPacketSyncPattern(rb,primary,secondary,channel);
@@ -185,13 +187,18 @@ int findMinorSync32_auto(RingBuffer &rb, uint32_t sync, int & counter, ch10Prima
         ((uint64_t)rb.get(4) );
         uint64_t value = ((uint64_t)rb.get(0))<<32;
         minorFrameIncrementer = -1;
-        printf("mask: temp: else : %16llX %d  \n",temp,counter);
+        printf("mask: temp: else : %16llX %d  \n",temp,posInPacket);
     }
     temp = temp & 0xFFFFFFFFFF;
     // printf("temp: %16llX %d %d : \n", temp,rb.readindex.load(),counter);
     int bitPos = 0;
     while (rb.available() >= 5)
     {
+        posInPacket = rb.readindex.load() % 3200;  // Recalculate position each iteration
+        // printf("DEBUG: posInPacket=%d, posInPacket+5=%d, packetLength=%d, packetLength-5=%d, condition=%d\n", 
+        //        posInPacket, posInPacket+5, primary.packetLength, primary.packetLength-5, 
+        //        (posInPacket+5>(int)primary.packetLength-5));
+        
         if (counter == primary.dataLength - 5)
         {
             cout << "syncfindwithmask: " << rb.readindex << " we are in counter==datalength: " << endl;
@@ -210,15 +217,15 @@ int findMinorSync32_auto(RingBuffer &rb, uint32_t sync, int & counter, ch10Prima
         {
             uint32_t candidate = (temp >> (8 - shift)) & 0xFFFFFFFF;
             // printf("candidate: %08X ",candidate);
-            // for (int k = 0; k < 4; k++)
-            // {
-            //     if (candidate == variants.v[k])
-            //     {
-            //         return (k << 16) | bitPos;
-            //         // rb.advance(bitPos/8);
-            //         // return shift;   // exact bit offset
-            //     }
-            // }
+            for (int k = 0; k < 4; k++)
+            {
+                if (candidate == variants.v[k])
+                {
+                    return (k << 16) | bitPos;
+                    // rb.advance(bitPos/8);
+                    // return shift;   // exact bit offset
+                }
+            }
             if (candidate==sync){
                 return bitPos;
             }
@@ -227,9 +234,9 @@ int findMinorSync32_auto(RingBuffer &rb, uint32_t sync, int & counter, ch10Prima
         // slide by 1 byte (8 bits)
         rb.advance(1);
         counter++;
-        if (rb.readindex.load()%3200-5>(int)primary.packetLength-5){
-            printf("%16llX ",temp);
-            cout<<"why you are here : "<<endl;
+        posInPacket = rb.readindex.load() % 3200;  // Update after advance
+        if (posInPacket+5>(int)primary.packetLength-5){
+            printf("DEBUG: Near end - posInPacket=%d, wrapping to next packet\n", posInPacket);
             continue;
         }
         bitPos += 8;
